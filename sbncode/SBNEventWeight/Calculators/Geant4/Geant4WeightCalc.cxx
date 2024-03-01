@@ -38,6 +38,8 @@
 #include "geant4reweight/src/ReweightBase/G4ReweightTraj.hh"
 #include "geant4reweight/src/ReweightBase/G4ReweightStep.hh"
 #include "geant4reweight/src/PropBase/G4ReweightParameterMaker.hh"
+#include "geant4reweight/src/ReweightBase/G4MultiReweighter.hh"
+#include "geant4reweight/src/ReweightBase/G4ReweightManager.hh"
 
 // local include
 #include "BetheBlochForG4ReweightValid.h"
@@ -107,7 +109,6 @@ void Geant4WeightCalc::Configure(fhicl::ParameterSet const& p,
   fMakeOutputTrees = pset.get< bool >( "makeoutputtree", false );
   std::string mode = pset.get<std::string>("mode");
   std::string FracsFileName = pset.get< std::string >( "fracsfile" );
-  std::string XSecFileName = pset.get< std::string >( "xsecfile" );
   std::vector< fhicl::ParameterSet > FitParSets = pset.get< std::vector< fhicl::ParameterSet > >("parameters");
   fNsims = pset.get<int> ("number_of_multisims", 0);
   fPdg = pset.get<int> ("pdg_to_reweight");
@@ -118,14 +119,18 @@ void Geant4WeightCalc::Configure(fhicl::ParameterSet const& p,
 
   // Get input files
   TFile FracsFile( FracsFileName.c_str(), "OPEN" );
-  TFile XSecFile( XSecFileName.c_str(), "OPEN" );
 
   // Configure G4Reweighter
   bool totalonly = false;
   if (fPdg==2212) totalonly = true;
-  ParMaker = new G4ReweightParameterMaker( FitParSets, totalonly );
-  theReweighter = RWFactory.BuildReweighter(fPdg, &XSecFile, &FracsFile, ParMaker->GetFSHists(), ParMaker->GetElasticHist() );
-
+  //ParMaker = new G4ReweightParameterMaker( FitParSets, totalonly );
+  
+  auto material = pset.get<fhicl::ParameterSet>("Material");
+  RWManager = new G4ReweightManager({material});
+  //theReweighter = RWFactory.BuildReweighter(fPdg, &XSecFile, &FracsFile, ParMaker->GetFSHists(), ParMaker->GetElasticHist() );
+  MultiRW = new G4MultiReweighter(211, *FracsFile, FitParSets,
+                                  material,
+                                  RWManager);
   // Make output trees to save things for quick and easy validation
   art::ServiceHandle<art::TFileService> tfs;
 
